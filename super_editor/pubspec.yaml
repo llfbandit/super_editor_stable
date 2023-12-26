@@ -36,7 +36,7 @@ dependencies:
   super_text_layout:
     git:
       url: https://github.com/llfbandit/super_editor_stable
-      path: attributed_text
+      path: super_text_layout
       ref: stable
   url_launcher: ^6.1.9
   uuid: ^3.0.3
