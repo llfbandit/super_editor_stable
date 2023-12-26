@@ -2,6 +2,7 @@ name: super_text_layout
 description: Configurable, composable, extensible text display for Flutter.
 version: 0.1.8
 homepage: https://github.com/superlistapp/super_editor
+publish_to: 'none' # Prevent to publish to pub.dev
 
 environment:
   sdk: ">=3.0.0 <4.0.0"
@@ -11,7 +12,11 @@ dependencies:
   flutter:
     sdk: flutter
 
-  attributed_text: ^0.2.2
+  attributed_text:
+    git:
+      url: https://github.com/llfbandit/super_editor_stable
+      path: attributed_text
+      ref: stable
   collection: ^1.18.0
   logging: ^1.0.1
 
