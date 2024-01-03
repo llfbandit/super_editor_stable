@@ -311,6 +311,14 @@ class TestSuperEditorConfigurator {
     return this;
   }
 
+  /// Configures the [SuperEditor] to use the given [tapRegionGroupId].
+  ///
+  /// This DOESN'T wrap the editor with a [TapRegion].
+  TestSuperEditorConfigurator withTapRegionGroupId(String? tapRegionGroupId) {
+    _config.tapRegionGroupId = tapRegionGroupId;
+    return this;
+  }
+
   /// Pumps a [SuperEditor] widget tree with the desired configuration, and returns
   /// a [TestDocumentContext], which includes the artifacts connected to the widget
   /// tree, e.g., the [DocumentEditor], [DocumentComposer], etc.
@@ -497,6 +505,8 @@ class _TestSuperEditorState extends State<_TestSuperEditor> {
     return SuperEditor(
       key: widget.testConfiguration.key,
       focusNode: widget.testDocumentContext.focusNode,
+      autofocus: widget.testConfiguration.autoFocus,
+      tapRegionGroupId: widget.testConfiguration.tapRegionGroupId,
       editor: widget.testDocumentContext.editor,
       document: widget.testDocumentContext.document,
       composer: widget.testDocumentContext.composer,
@@ -522,7 +532,6 @@ class _TestSuperEditorState extends State<_TestSuperEditor> {
         ...widget.testConfiguration.addedComponents,
         ...(widget.testConfiguration.componentBuilders ?? defaultComponentBuilders),
       ],
-      autofocus: widget.testConfiguration.autoFocus,
       scrollController: widget.testConfiguration.scrollController,
       plugins: widget.testConfiguration.plugins,
     );
@@ -536,6 +545,7 @@ class SuperEditorTestConfiguration {
   Key? key;
   FocusNode? focusNode;
   bool autoFocus = false;
+  String? tapRegionGroupId;
   ui.Size? editorSize;
   final MutableDocument document;
   final addedRequestHandlers = <EditRequestHandler>[];
@@ -794,6 +804,83 @@ class FakeImageComponentBuilder implements ComponentBuilder {
         height: size.height,
         width: size.width,
       ),
+    );
+  }
+}
+
+/// Builds [TaskComponentViewModel]s and [ExpandingTaskComponent]s for every
+/// [TaskNode] in a document.
+class ExpandingTaskComponentBuilder extends ComponentBuilder {
+  @override
+  SingleColumnLayoutComponentViewModel? createViewModel(Document document, DocumentNode node) {
+    if (node is! TaskNode) {
+      return null;
+    }
+
+    return TaskComponentViewModel(
+      nodeId: node.id,
+      padding: EdgeInsets.zero,
+      isComplete: node.isComplete,
+      setComplete: (bool isComplete) {},
+      text: node.text,
+      textStyleBuilder: noStyleBuilder,
+      selectionColor: const Color(0x00000000),
+    );
+  }
+
+  @override
+  Widget? createComponent(
+      SingleColumnDocumentComponentContext componentContext, SingleColumnLayoutComponentViewModel componentViewModel) {
+    if (componentViewModel is! TaskComponentViewModel) {
+      return null;
+    }
+
+    return ExpandingTaskComponent(
+      key: componentContext.componentKey,
+      viewModel: componentViewModel,
+    );
+  }
+}
+
+/// A task component which expands its height when it's selected.
+class ExpandingTaskComponent extends StatefulWidget {
+  const ExpandingTaskComponent({
+    super.key,
+    required this.viewModel,
+  });
+
+  final TaskComponentViewModel viewModel;
+
+  @override
+  State<ExpandingTaskComponent> createState() => _ExpandingTaskComponentState();
+}
+
+class _ExpandingTaskComponentState extends State<ExpandingTaskComponent>
+    with ProxyDocumentComponent<ExpandingTaskComponent>, ProxyTextComposable {
+  final _textKey = GlobalKey();
+
+  @override
+  GlobalKey<State<StatefulWidget>> get childDocumentComponentKey => _textKey;
+
+  @override
+  TextComposable get childTextComposable => childDocumentComponentKey.currentState as TextComposable;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TextComponent(
+          key: _textKey,
+          text: widget.viewModel.text,
+          textStyleBuilder: widget.viewModel.textStyleBuilder,
+          textSelection: widget.viewModel.selection,
+          selectionColor: widget.viewModel.selectionColor,
+          highlightWhenEmpty: widget.viewModel.highlightWhenEmpty,
+        ),
+        if (widget.viewModel.selection != null) //
+          const SizedBox(height: 20)
+      ],
     );
   }
 }

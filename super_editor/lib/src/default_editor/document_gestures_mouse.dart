@@ -88,6 +88,10 @@ class _DocumentMouseInteractorState extends State<DocumentMouseInteractor> with 
   // Tracks user drag gestures for selection purposes.
   SelectionType _selectionType = SelectionType.position;
   Offset? _dragStartGlobal;
+  // The selection's document position where the user started dragging an expanded selection.
+  // The selection base is cached instead of continuously re-computed because components
+  // can change size and position during selection.
+  DocumentPosition? _dragSelectionBase;
   Offset? _dragEndGlobal;
   bool _expandSelectionDuringDrag = false;
   // When selecting by word, this is the initial word's upstream position.
@@ -283,6 +287,7 @@ class _DocumentMouseInteractorState extends State<DocumentMouseInteractor> with 
           SelectionChangeType.expandSelection,
           SelectionReason.userInteraction,
         ),
+        const ClearComposingRegionRequest(),
       ]);
     } else {
       // Place the document selection at the location where the
@@ -468,6 +473,7 @@ class _DocumentMouseInteractorState extends State<DocumentMouseInteractor> with 
         SelectionChangeType.placeCaret,
         SelectionReason.userInteraction,
       ),
+      const ClearComposingRegionRequest(),
     ]);
   }
 
@@ -545,6 +551,7 @@ class _DocumentMouseInteractorState extends State<DocumentMouseInteractor> with 
   void _onDragEnd() {
     setState(() {
       _dragStartGlobal = null;
+      _dragSelectionBase = null;
       _dragEndGlobal = null;
       _expandSelectionDuringDrag = false;
       _wordSelectionUpstream = null;
@@ -620,7 +627,10 @@ Updating drag selection:
       baseOffsetInDocument,
       extentOffsetInDocument,
     );
-    DocumentPosition? basePosition = selection?.base;
+
+    _dragSelectionBase ??= selection?.base;
+
+    DocumentPosition? basePosition = _dragSelectionBase;
     DocumentPosition? extentPosition = selection?.extent;
     editorGesturesLog.fine(" - base: $basePosition, extent: $extentPosition");
 
@@ -695,6 +705,7 @@ Updating drag selection:
     editorGesturesLog.fine("Clearing document selection");
     widget.editor.execute([
       const ClearSelectionRequest(),
+      const ClearComposingRegionRequest(),
     ]);
   }
 

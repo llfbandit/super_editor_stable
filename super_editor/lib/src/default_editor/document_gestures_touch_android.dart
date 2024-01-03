@@ -133,7 +133,7 @@ class SuperEditorAndroidControlsController {
 
   /// Whether the caret should blink right now.
   ValueListenable<bool> get shouldCaretBlink => _shouldCaretBlink;
-  final _shouldCaretBlink = ValueNotifier<bool>(false);
+  final _shouldCaretBlink = ValueNotifier<bool>(true);
 
   /// Tells the caret to blink by setting [shouldCaretBlink] to `true`.
   void blinkCaret() {
@@ -376,6 +376,7 @@ class SuperEditorAndroidHandlesDocumentLayerBuilder implements SuperEditorLayerB
       changeSelection: (newSelection, changeType, reason) {
         editContext.editor.execute([
           ChangeSelectionRequest(newSelection, changeType, reason),
+          const ClearComposingRegionRequest(),
         ]);
       },
       caretColor: caretColor,
@@ -863,6 +864,7 @@ class _AndroidDocumentTouchInteractorState extends State<AndroidDocumentTouchInt
         SelectionChangeType.placeCaret,
         SelectionReason.userInteraction,
       ),
+      const ClearComposingRegionRequest(),
     ]);
 
     return true;
@@ -1160,6 +1162,7 @@ class _AndroidDocumentTouchInteractorState extends State<AndroidDocumentTouchInt
           SelectionChangeType.expandSelection,
           SelectionReason.userInteraction,
         ),
+        const ClearComposingRegionRequest(),
       ]);
       return true;
     } else {
@@ -1179,6 +1182,7 @@ class _AndroidDocumentTouchInteractorState extends State<AndroidDocumentTouchInt
           SelectionChangeType.expandSelection,
           SelectionReason.userInteraction,
         ),
+        const ClearComposingRegionRequest(),
       ]);
       return true;
     } else {
@@ -1196,6 +1200,7 @@ class _AndroidDocumentTouchInteractorState extends State<AndroidDocumentTouchInt
         SelectionChangeType.placeCaret,
         SelectionReason.userInteraction,
       ),
+      const ClearComposingRegionRequest(),
     ]);
   }
 
@@ -1206,6 +1211,7 @@ class _AndroidDocumentTouchInteractorState extends State<AndroidDocumentTouchInt
         SelectionChangeType.expandSelection,
         SelectionReason.userInteraction,
       ),
+      const ClearComposingRegionRequest(),
     ]);
   }
 
@@ -1213,6 +1219,7 @@ class _AndroidDocumentTouchInteractorState extends State<AndroidDocumentTouchInt
     editorGesturesLog.fine("Clearing document selection");
     widget.editor.execute([
       const ClearSelectionRequest(),
+      const ClearComposingRegionRequest(),
     ]);
   }
 
@@ -1256,6 +1263,7 @@ class _AndroidDocumentTouchInteractorState extends State<AndroidDocumentTouchInt
 class SuperEditorAndroidControlsOverlayManager extends StatefulWidget {
   const SuperEditorAndroidControlsOverlayManager({
     super.key,
+    this.tapRegionGroupId,
     required this.document,
     required this.getDocumentLayout,
     required this.selection,
@@ -1263,8 +1271,12 @@ class SuperEditorAndroidControlsOverlayManager extends StatefulWidget {
     required this.scrollChangeSignal,
     required this.dragHandleAutoScroller,
     this.defaultToolbarBuilder,
+    this.showDebugPaint = false,
     this.child,
   });
+
+  /// {@macro super_editor_tap_region_group_id}
+  final String? tapRegionGroupId;
 
   final Document document;
   final DocumentLayoutResolver getDocumentLayout;
@@ -1276,6 +1288,10 @@ class SuperEditorAndroidControlsOverlayManager extends StatefulWidget {
   final ValueListenable<DragHandleAutoScroller?> dragHandleAutoScroller;
 
   final DocumentFloatingToolbarBuilder? defaultToolbarBuilder;
+
+  /// Paints some extra visual ornamentation to help with
+  /// debugging, when `true`.
+  final bool showDebugPaint;
 
   final Widget? child;
 
@@ -1512,16 +1528,20 @@ class SuperEditorAndroidControlsOverlayManagerState extends State<SuperEditorAnd
   }
 
   Widget _buildOverlay(BuildContext context) {
-    return Stack(
-      children: [
-        _buildMagnifierFocalPoint(),
-        _buildDebugSelectionFocalPoint(),
-        _buildMagnifier(),
-        // Handles and toolbar are built after the magnifier so that they don't appear in the magnifier.
-        _buildCollapsedHandle(),
-        ..._buildExpandedHandles(),
-        _buildToolbar(),
-      ],
+    return TapRegion(
+      groupId: widget.tapRegionGroupId,
+      child: Stack(
+        children: [
+          _buildMagnifierFocalPoint(),
+          if (widget.showDebugPaint) //
+            _buildDebugSelectionFocalPoint(),
+          _buildMagnifier(),
+          // Handles and toolbar are built after the magnifier so that they don't appear in the magnifier.
+          _buildCollapsedHandle(),
+          ..._buildExpandedHandles(),
+          _buildToolbar(),
+        ],
+      ),
     );
   }
 
@@ -1529,6 +1549,14 @@ class SuperEditorAndroidControlsOverlayManagerState extends State<SuperEditorAnd
     return ValueListenableBuilder(
       valueListenable: _controlsController!.shouldShowCollapsedHandle,
       builder: (context, shouldShow, child) {
+        final selection = widget.selection.value;
+        if (selection == null || !selection.isCollapsed) {
+          // When the user double taps we first place a collapsed selection
+          // and then an expanded selection.
+          // Return a SizedBox to avoid flashing the collapsed drag handle.
+          return const SizedBox();
+        }
+
         // Note: If we pass this widget as the `child` property, it causes repeated starts and stops
         // of the pan gesture. By building it here, pan events work as expected.
         return Follower.withOffset(

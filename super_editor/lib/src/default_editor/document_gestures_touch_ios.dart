@@ -753,6 +753,7 @@ class _IosDocumentTouchInteractorState extends State<IosDocumentTouchInteractor>
         SelectionChangeType.placeCaret,
         SelectionReason.userInteraction,
       ),
+      const ClearComposingRegionRequest(),
     ]);
 
     return true;
@@ -978,6 +979,7 @@ class _IosDocumentTouchInteractorState extends State<IosDocumentTouchInteractor>
           SelectionChangeType.placeCaret,
           SelectionReason.userInteraction,
         ),
+        const ClearComposingRegionRequest(),
       ]);
     } else if (_dragHandleType == HandleType.upstream) {
       widget.editor.execute([
@@ -988,6 +990,7 @@ class _IosDocumentTouchInteractorState extends State<IosDocumentTouchInteractor>
           SelectionChangeType.expandSelection,
           SelectionReason.userInteraction,
         ),
+        const ClearComposingRegionRequest(),
       ]);
     } else if (_dragHandleType == HandleType.downstream) {
       widget.editor.execute([
@@ -998,6 +1001,7 @@ class _IosDocumentTouchInteractorState extends State<IosDocumentTouchInteractor>
           SelectionChangeType.expandSelection,
           SelectionReason.userInteraction,
         ),
+        const ClearComposingRegionRequest(),
       ]);
     }
   }
@@ -1138,7 +1142,9 @@ class _IosDocumentTouchInteractorState extends State<IosDocumentTouchInteractor>
         changeType,
         SelectionReason.userInteraction,
       ),
+      const ClearComposingRegionRequest(),
     ]);
+
     editorGesturesLog.fine("Selected region: ${widget.selection.value}");
   }
 
@@ -1162,6 +1168,7 @@ class _IosDocumentTouchInteractorState extends State<IosDocumentTouchInteractor>
         SelectionChangeType.expandSelection,
         SelectionReason.userInteraction,
       ),
+      const ClearComposingRegionRequest(),
     ]);
   }
 
@@ -1177,6 +1184,7 @@ class _IosDocumentTouchInteractorState extends State<IosDocumentTouchInteractor>
           SelectionChangeType.expandSelection,
           SelectionReason.userInteraction,
         ),
+        const ClearComposingRegionRequest(),
       ]);
       return true;
     } else {
@@ -1218,6 +1226,7 @@ class _IosDocumentTouchInteractorState extends State<IosDocumentTouchInteractor>
         SelectionChangeType.placeCaret,
         SelectionReason.userInteraction,
       ),
+      const ClearComposingRegionRequest(),
     ]);
   }
 
@@ -1348,9 +1357,13 @@ enum DragMode {
 class SuperEditorIosToolbarOverlayManager extends StatefulWidget {
   const SuperEditorIosToolbarOverlayManager({
     super.key,
+    this.tapRegionGroupId,
     this.defaultToolbarBuilder,
     this.child,
   });
+
+  /// {@macro super_editor_tap_region_group_id}
+  final String? tapRegionGroupId;
 
   final DocumentFloatingToolbarBuilder? defaultToolbarBuilder;
 
@@ -1386,13 +1399,16 @@ class SuperEditorIosToolbarOverlayManagerState extends State<SuperEditorIosToolb
   }
 
   Widget _buildToolbar(BuildContext context) {
-    return IosFloatingToolbarOverlay(
-      shouldShowToolbar: _controlsController!.shouldShowToolbar,
-      toolbarFocalPoint: _controlsController!.toolbarFocalPoint,
-      floatingToolbarBuilder:
-          _controlsController!.toolbarBuilder ?? widget.defaultToolbarBuilder ?? (_, __, ___) => const SizedBox(),
-      createOverlayControlsClipper: _controlsController!.createOverlayControlsClipper,
-      showDebugPaint: false,
+    return TapRegion(
+      groupId: widget.tapRegionGroupId,
+      child: IosFloatingToolbarOverlay(
+        shouldShowToolbar: _controlsController!.shouldShowToolbar,
+        toolbarFocalPoint: _controlsController!.toolbarFocalPoint,
+        floatingToolbarBuilder:
+            _controlsController!.toolbarBuilder ?? widget.defaultToolbarBuilder ?? (_, __, ___) => const SizedBox(),
+        createOverlayControlsClipper: _controlsController!.createOverlayControlsClipper,
+        showDebugPaint: false,
+      ),
     );
   }
 }
@@ -1700,6 +1716,7 @@ class _EditorFloatingCursorState extends State<EditorFloatingCursor> {
         SelectionChangeType.placeCaret,
         SelectionReason.userInteraction,
       ),
+      const ClearComposingRegionRequest(),
     ]);
   }
 
@@ -1797,6 +1814,7 @@ class SuperEditorIosHandlesDocumentLayerBuilder implements SuperEditorLayerBuild
       changeSelection: (newSelection, changeType, reason) {
         editContext.editor.execute([
           ChangeSelectionRequest(newSelection, changeType, reason),
+          const ClearComposingRegionRequest(),
         ]);
       },
       handleColor: handleColor ??
